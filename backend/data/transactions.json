@@ -1,0 +1,1 @@
+[{"id":"1773607648_50800e","title":"Test Income","amount":500.0,"type":"income","categoryId":"cat_salary","date":"2026-03-15","note":"Test","createdAt":1773607648,"updatedAt":1773607648},{"id":"1773607842_1f2af1","title":"Coffee","amount":4.75,"type":"expense","categoryId":"cat_food","date":"2026-03-15","note":"Morning coffee","createdAt":1773607842,"updatedAt":1773607842}]

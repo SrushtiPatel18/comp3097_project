@@ -10,9 +10,7 @@ export default function AddTransactionModal({ store, onClose, existing }) {
   const [note, setNote] = useState(existing?.note || '');
   const [error, setError] = useState('');
 
-  const allCategories = isIncome
-    ? ['Income', ...store.categories]
-    : store.categories;
+  const allCategories = store.categories;
 
   const canSave = title.trim() && parseFloat(amount) > 0;
 

@@ -1,31 +1,58 @@
 # SmartPocket
 
-A personal finance tracker originally written as a native iOS app (SwiftUI + SwiftData). The original iOS source is preserved in the `SmartPocketIOS/` directory. A fully functional web version has been built using React + Vite in the `web/` directory.
+A personal finance tracker originally written as a native iOS app (SwiftUI + SwiftData). The original iOS source is preserved in `SmartPocketIOS/`. A fully functional web frontend (React + Vite) connects to a custom Swift HTTP backend.
 
 ## Project Structure
 
 ```
 SmartPocketIOS/         Original iOS/Swift source code (SwiftUI + SwiftData)
-  ├── Models.swift      Data models: SPTransaction, SPCategory, SPSettings
-  ├── HomeView.swift    Budget dashboard
-  ├── TransactionsListView.swift  Full transaction list with search/filter
-  ├── ReportsView.swift Spending charts (pie chart + calendar view)
-  ├── settingsView.swift Budget and category management
-  └── Theme.swift       Design tokens (purple/blue palette, CAD currency)
 
-web/                    React + Vite web app (browser-runnable version)
+web/                    React + Vite web frontend (port 5000)
   ├── src/
-  │   ├── App.jsx       Root with tab navigation
-  │   ├── HomeView.jsx  Budget dashboard with recent transactions
-  │   ├── TransactionsView.jsx  Full list with search, filter, CRUD
-  │   ├── ReportsView.jsx  Pie chart (recharts) + calendar date picker
-  │   ├── SettingsView.jsx  Budget edit, category CRUD, data reset
-  │   ├── AddTransactionModal.jsx  Add/edit bottom sheet form
-  │   ├── TransactionDetailModal.jsx  View/edit/delete detail sheet
-  │   ├── store.js      localStorage-backed state management
-  │   └── utils.js      CAD currency formatting, category icons, chart colors
-  └── vite.config.js    Host 0.0.0.0, port 5000, allowedHosts: true
+  │   ├── App.jsx                   Root: tab nav + loading/error states
+  │   ├── HomeView.jsx              Budget dashboard with recent transactions
+  │   ├── TransactionsView.jsx      Full list with search, filter, CRUD
+  │   ├── ReportsView.jsx           Pie chart (recharts) + calendar date picker
+  │   ├── SettingsView.jsx          Budget edit, category CRUD, data reset
+  │   ├── AddTransactionModal.jsx   Add/edit bottom sheet form
+  │   ├── TransactionDetailModal.jsx View/edit/delete detail sheet
+  │   ├── store.js                  API client + state (calls Swift backend)
+  │   └── utils.js                  CAD formatting, category icons, chart colors
+  └── vite.config.js    Port 5000; proxies /api → http://localhost:8080
+
+backend/                Pure-Swift HTTP backend (port 8080)
+  ├── Sources/
+  │   ├── main.swift        Entry point, CLI flag parsing, server boot
+  │   ├── HTTP.swift        POSIX socket server, HTTP parser, response builder
+  │   ├── Router.swift      URL pattern router with path parameters
+  │   ├── Handlers.swift    REST handlers for transactions/categories/settings
+  │   ├── Models.swift      Transaction, Category, Settings structs + validation
+  │   ├── Storage.swift     File-based JSON persistence to ./data/
+  │   └── JSON.swift        Full JSON encoder + recursive-descent parser
+  ├── build.sh          Two-step compile (swiftc -c) + manual ld.gold link
+  ├── run.sh            Sets LD_LIBRARY_PATH and launches ./smartpocketd
+  └── data/             Persisted JSON files (transactions, categories, settings)
 ```
+
+## Backend API
+
+All routes return `application/json`. CORS headers are set on every response.
+
+| Method | Path                    | Description                         |
+|--------|-------------------------|-------------------------------------|
+| GET    | /health                 | Server status                       |
+| GET    | /transactions           | List all (optional ?categoryId=...)  |
+| POST   | /transactions           | Create transaction                  |
+| GET    | /transactions/:id       | Get one                             |
+| PUT    | /transactions/:id       | Update (partial patch)              |
+| DELETE | /transactions/:id       | Delete → 204                        |
+| GET    | /categories             | List all categories                 |
+| POST   | /categories             | Create category                     |
+| GET    | /categories/:id         | Get one                             |
+| PUT    | /categories/:id         | Update                              |
+| DELETE | /categories/:id         | Delete (user-created only) → 204    |
+| GET    | /settings               | Get settings                        |
+| PUT    | /settings               | Update settings                     |
 
 ## Features
 
@@ -35,17 +62,38 @@ web/                    React + Vite web app (browser-runnable version)
 - Calendar view to browse transactions by date
 - Full-text search and income/expense filtering
 - Custom category management
-- localStorage persistence
+- Persistent JSON file storage (backend/data/)
 
 ## Tech Stack
 
-- **Web**: React 19, Vite 8, Recharts
+- **Frontend**: React 19, Vite 8, Recharts
+- **Backend**: Swift 5.8 (pure Glibc — no Foundation, no Vapor, no SwiftPM)
+- **Storage**: JSON files via POSIX file I/O
 - **iOS** (original): Swift 5.8, SwiftUI, SwiftData, Charts
+
+## Compilation Notes (Backend)
+
+The Replit Swift 5.8 environment is a minimal toolchain — Foundation is unavailable. The backend is built entirely with:
+- `import Glibc` for POSIX syscalls (sockets, file I/O, time)
+- Manual two-step build: `swiftc -c` (all sources together) → `ld.gold` with explicit nix store paths
+- A fake sysroot pointing glibc headers at the nix store path
+- Runtime: `LD_LIBRARY_PATH` set to libdispatch + Swift stdlib + glibc lib paths
+
+Key nix paths used in build.sh:
+- `glibc-2.40-66-dev` — C system headers
+- `swift-corelibs-libdispatch-5.8-dev` — dispatch headers
+- `swift-5.8` — swiftc, swift-autolink-extract
+- `swift-5.8-lib` — swiftrt.o, libswiftCore.so
+- `binutils-2.44/bin/ld.gold` — linker
 
 ## Running
 
-The workflow `Start application` runs `cd web && npm run dev` on port 5000.
+- `Start application` workflow: `cd web && npm run dev` (port 5000, webview)
+- `Swift Backend` workflow: `cd backend && bash run.sh` (port 8080, console)
+
+To rebuild the backend binary: `cd backend && bash build.sh`
 
 ## Deployment
 
-Configured as a static site. Build: `cd web && npm run build`. Public dir: `web/dist`.
+Static site config: build `cd web && npm run build`, public dir `web/dist`.
+For production backend deployment, run `bash backend/build.sh` then `bash backend/run.sh`.

@@ -57,6 +57,28 @@ export default function App() {
   const [tab, setTab] = useState('home');
   const store = useStore();
 
+  if (store.loading) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+        <div style={{ width: 40, height: 40, border: '4px solid #e5e7eb', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ color: '#6b7280', fontSize: 15 }}>Connecting to server…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (store.error) {
+    return (
+      <div className="app" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, padding: 24 }}>
+        <p style={{ color: '#dc2626', fontWeight: 600, fontSize: 16 }}>Cannot reach backend</p>
+        <p style={{ color: '#6b7280', fontSize: 13, textAlign: 'center' }}>{store.error}</p>
+        <button onClick={() => window.location.reload()} style={{ padding: '8px 20px', background: '#6366f1', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       {tab === 'home' && <HomeView store={store} />}

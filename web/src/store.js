@@ -1,94 +1,156 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
-const STORAGE_KEY = 'smartpocket_data';
+const API = '/api';
 
-const DEFAULT_CATEGORIES = ['Food', 'Travel', 'Entertainment', 'Utilities', 'Health', 'Shopping'];
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`${API}${path}`, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+  });
+  if (res.status === 204) return null;
+  const text = await res.text();
+  if (!text) return null;
+  const json = JSON.parse(text);
+  if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+  return json;
+}
 
-const SEED_TRANSACTIONS = [
-  { id: 1, title: 'Salary', amount: 3500, isIncome: true, categoryName: 'Income', date: '2026-03-01', note: '' },
-  { id: 2, title: 'Groceries', amount: 85.40, isIncome: false, categoryName: 'Food', date: '2026-03-03', note: 'Weekly shop' },
-  { id: 3, title: 'Netflix', amount: 18.99, isIncome: false, categoryName: 'Entertainment', date: '2026-03-05', note: '' },
-  { id: 4, title: 'Coffee', amount: 6.50, isIncome: false, categoryName: 'Food', date: '2026-03-07', note: '' },
-  { id: 5, title: 'Transit Pass', amount: 120, isIncome: false, categoryName: 'Travel', date: '2026-03-08', note: 'Monthly pass' },
-];
-
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
+// Map backend transaction → frontend transaction
+function toFrontendTx(tx, categories) {
+  const cat = categories.find(c => c.id === tx.categoryId);
   return {
-    transactions: SEED_TRANSACTIONS,
-    categories: DEFAULT_CATEGORIES,
-    budget: 2000,
-    nextId: 100,
+    id: tx.id,
+    title: tx.title,
+    amount: tx.amount,
+    isIncome: tx.type === 'income',
+    categoryName: cat ? cat.name : tx.categoryId,
+    categoryId: tx.categoryId,
+    date: tx.date,
+    note: tx.note || '',
   };
 }
 
-function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+// Map frontend form data → backend transaction body
+function toBackendTx(frontendTx, categories) {
+  const cat = categories.find(c => c.name === frontendTx.categoryName);
+  return {
+    title: frontendTx.title,
+    amount: frontendTx.amount,
+    type: frontendTx.isIncome ? 'income' : 'expense',
+    categoryId: cat ? cat.id : (frontendTx.categoryId || 'cat_other'),
+    date: frontendTx.date,
+    note: frontendTx.note || '',
+  };
 }
 
 export function useStore() {
-  const [data, setData] = useState(() => loadData());
+  const [transactions, setTransactions] = useState([]);
+  const [categories, setCategories]     = useState([]);
+  const [budget, setBudgetState]        = useState(2000);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState(null);
+  const backendCats = useRef([]);   // raw backend category objects
 
-  useEffect(() => {
-    saveData(data);
-  }, [data]);
-
-  const addTransaction = (tx) => {
-    setData(d => ({
-      ...d,
-      transactions: [{ ...tx, id: d.nextId }, ...d.transactions],
-      nextId: d.nextId + 1,
-    }));
-  };
-
-  const updateTransaction = (id, updates) => {
-    setData(d => ({
-      ...d,
-      transactions: d.transactions.map(t => t.id === id ? { ...t, ...updates } : t),
-    }));
-  };
-
-  const deleteTransaction = (id) => {
-    setData(d => ({
-      ...d,
-      transactions: d.transactions.filter(t => t.id !== id),
-    }));
-  };
-
-  const setBudget = (budget) => {
-    setData(d => ({ ...d, budget: Number(budget) }));
-  };
-
-  const addCategory = (name) => {
-    if (!data.categories.includes(name)) {
-      setData(d => ({ ...d, categories: [...d.categories, name] }));
+  const loadAll = useCallback(async () => {
+    try {
+      const [rawCats, rawTxs, settings] = await Promise.all([
+        apiFetch('/categories'),
+        apiFetch('/transactions'),
+        apiFetch('/settings'),
+      ]);
+      backendCats.current = rawCats;
+      const categoryNames = rawCats.map(c => c.name);
+      setCategories(categoryNames);
+      setTransactions(rawTxs.map(tx => toFrontendTx(tx, rawCats)));
+      setBudgetState(settings.budgetLimit ?? 2000);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
+  }, []);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const addTransaction = async (frontendTx) => {
+    const body = toBackendTx(frontendTx, backendCats.current);
+    const created = await apiFetch('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    const mapped = toFrontendTx(created, backendCats.current);
+    setTransactions(prev => [mapped, ...prev]);
   };
 
-  const deleteCategory = (name) => {
-    setData(d => ({
-      ...d,
-      categories: d.categories.filter(c => c !== name),
-    }));
+  const updateTransaction = async (id, updates) => {
+    const existing = transactions.find(t => t.id === id);
+    if (!existing) return;
+    const merged = { ...existing, ...updates };
+    const body = toBackendTx(merged, backendCats.current);
+    const updated = await apiFetch(`/transactions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    const mapped = toFrontendTx(updated, backendCats.current);
+    setTransactions(prev => prev.map(t => t.id === id ? mapped : t));
   };
 
-  const resetAll = () => {
-    const fresh = {
-      transactions: SEED_TRANSACTIONS,
-      categories: DEFAULT_CATEGORIES,
-      budget: 2000,
-      nextId: 100,
-    };
-    setData(fresh);
+  const deleteTransaction = async (id) => {
+    await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
+    setTransactions(prev => prev.filter(t => t.id !== id));
   };
+
+  const setBudget = async (value) => {
+    await apiFetch('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ budgetLimit: Number(value) }),
+    });
+    setBudgetState(Number(value));
+  };
+
+  const addCategory = async (name) => {
+    if (backendCats.current.find(c => c.name === name)) return;
+    const created = await apiFetch('/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name, icon: 'circle', color: '#6366f1', type: 'both' }),
+    });
+    backendCats.current = [...backendCats.current, created];
+    setCategories(prev => [...prev, name]);
+  };
+
+  const deleteCategory = async (name) => {
+    const cat = backendCats.current.find(c => c.name === name);
+    if (!cat) return;
+    await apiFetch(`/categories/${cat.id}`, { method: 'DELETE' });
+    backendCats.current = backendCats.current.filter(c => c.id !== cat.id);
+    setCategories(prev => prev.filter(c => c !== name));
+    setTransactions(prev =>
+      prev.map(t => t.categoryName === name ? { ...t, categoryName: 'Other' } : t)
+    );
+  };
+
+  const resetAll = async () => {
+    const allTxs = await apiFetch('/transactions');
+    await Promise.all(allTxs.map(tx => apiFetch(`/transactions/${tx.id}`, { method: 'DELETE' })));
+    await apiFetch('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ budgetLimit: 2000 }),
+    });
+    await loadAll();
+  };
+
+  const userCategories = backendCats.current
+    .filter(c => !c.isDefault)
+    .map(c => c.name);
 
   return {
-    transactions: data.transactions,
-    categories: data.categories,
-    budget: data.budget,
+    transactions,
+    categories,
+    userCategories,
+    budget,
+    loading,
+    error,
     addTransaction,
     updateTransaction,
     deleteTransaction,

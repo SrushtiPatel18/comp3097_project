@@ -61,7 +61,7 @@ export default function SettingsView({ store }) {
         <div className="card">
           <div className="section-title">Categories</div>
 
-          {store.categories.map(c => (
+          {(store.userCategories || []).map(c => (
             <div key={c} className="settings-row">
               <span className="settings-label">{c}</span>
               <button
