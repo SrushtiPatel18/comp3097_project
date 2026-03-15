@@ -54,7 +54,7 @@ struct TransactionsListView: View {
     }
 
     private var filtered: [SPTransaction] {
-        // 1) apply filter (income/expense/all)
+        // 1) apply filter
         let base: [SPTransaction] = {
             switch filter {
             case .all: return txs
@@ -78,6 +78,5 @@ struct TransactionsListView: View {
             let item = filtered[index]
             ctx.delete(item)
         }
-        // Optional: small haptic feel (no extra imports)
     }
 }

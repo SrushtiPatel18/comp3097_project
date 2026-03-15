@@ -45,7 +45,7 @@ struct SettingsView: View {
                     }
                     .spCard()
 
-                    // Category Card
+                    //Category Card
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Category Management")
                             .font(AppTheme.headline)

@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AppTheme {
-    // Purple + Blue theme
+    
     static let purple = Color(hex: "#6D28D9")
     static let blue   = Color(hex: "#2563EB")
 
@@ -14,7 +14,7 @@ enum AppTheme {
         endPoint: .bottomTrailing
     )
 
-    // Rounded fonts (nice + modern, no downloads)
+    // Rounded fonts
     static let title    = Font.system(size: 28, weight: .bold, design: .rounded)
     static let headline = Font.system(size: 18, weight: .semibold, design: .rounded)
     static let body     = Font.system(size: 16, weight: .regular, design: .rounded)
