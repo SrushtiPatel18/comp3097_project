@@ -12,6 +12,6 @@ struct RootTabView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
         }
-        .tint(AppTheme.purple) // tab icon purple
+        .tint(AppTheme.purple)
     }
 }
