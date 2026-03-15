@@ -63,7 +63,7 @@ struct TransactionsListView: View {
             }
         }()
 
-        // 2) apply search
+        // 2) apply search to it
         let q = search.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty { return base }
 
