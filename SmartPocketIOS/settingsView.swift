@@ -15,7 +15,6 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 14) {
 
-                    // Budget Card
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Budget Management")
                             .font(AppTheme.headline)
