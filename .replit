@@ -38,13 +38,13 @@ outputType = "webview"
 name = "Swift Backend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd backend && bash run.sh"
-waitForPort = 8080
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && swift run.swift"
+waitForPort = 8080
 
 [[ports]]
 localPort = 5000
@@ -53,6 +53,14 @@ externalPort = 80
 [[ports]]
 localPort = 8080
 externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 8082
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "static"

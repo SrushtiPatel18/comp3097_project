@@ -29,8 +29,8 @@ backend/                Pure-Swift HTTP backend (port 8080)
   │   ├── Models.swift      Transaction, Category, Settings structs + validation
   │   ├── Storage.swift     File-based JSON persistence to ./data/
   │   └── JSON.swift        Full JSON encoder + recursive-descent parser
-  ├── build.sh          Two-step compile (swiftc -c) + manual ld.gold link
-  ├── run.sh            Sets LD_LIBRARY_PATH and launches ./smartpocketd
+  ├── build.swift       Pure-Swift build script: swiftc -c + ld.gold link
+  ├── run.swift         Pure-Swift launcher: builds if needed, sets LD_LIBRARY_PATH
   └── data/             Persisted JSON files (transactions, categories, settings)
 ```
 
@@ -79,21 +79,27 @@ The Replit Swift 5.8 environment is a minimal toolchain — Foundation is unavai
 - A fake sysroot pointing glibc headers at the nix store path
 - Runtime: `LD_LIBRARY_PATH` set to libdispatch + Swift stdlib + glibc lib paths
 
-Key nix paths used in build.sh:
+Key nix paths used in build.swift:
 - `glibc-2.40-66-dev` — C system headers
 - `swift-corelibs-libdispatch-5.8-dev` — dispatch headers
 - `swift-5.8` — swiftc, swift-autolink-extract
 - `swift-5.8-lib` — swiftrt.o, libswiftCore.so
 - `binutils-2.44/bin/ld.gold` — linker
 
+### Build quirk: LD_LIBRARY_PATH
+The `swift` interpreter wrapper injects its own `LD_LIBRARY_PATH` which conflicts
+with `swiftc`'s RPATH. The compile step therefore uses `env -u LD_LIBRARY_PATH`
+so `swiftc` uses its own RPATH (glibc-2.37) for compilation. The binary itself
+runs under glibc-2.40 via `LD_LIBRARY_PATH` set in `run.swift`.
+
 ## Running
 
 - `Start application` workflow: `cd web && npm run dev` (port 5000, webview)
-- `Swift Backend` workflow: `cd backend && bash run.sh` (port 8080, console)
+- `Swift Backend` workflow: `cd backend && swift run.swift` (port 8080, console)
 
-To rebuild the backend binary: `cd backend && bash build.sh`
+To rebuild the backend binary: `cd backend && swift build.swift`
 
 ## Deployment
 
 Static site config: build `cd web && npm run build`, public dir `web/dist`.
-For production backend deployment, run `bash backend/build.sh` then `bash backend/run.sh`.
+For production backend deployment, run `swift backend/build.swift` then `swift backend/run.swift`.
