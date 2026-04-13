@@ -15,7 +15,6 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 14) {
 
-                    // Budget Card
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Budget Management")
                             .font(AppTheme.headline)
@@ -46,7 +45,7 @@ struct SettingsView: View {
                     }
                     .spCard()
 
-                    // Category Card
+                    //Category Card
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Category Management")
                             .font(AppTheme.headline)
