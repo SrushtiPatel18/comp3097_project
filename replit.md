@@ -34,25 +34,26 @@ backend/                Pure-Swift HTTP backend (port 8080)
   └── data/             Persisted JSON files (transactions, categories, settings)
 ```
 
-## Backend API
+## Backend API (v2.0)
 
-All routes return `application/json`. CORS headers are set on every response.
+All routes return `application/json`. CORS + security headers are set on every response.
 
-| Method | Path                    | Description                         |
-|--------|-------------------------|-------------------------------------|
-| GET    | /health                 | Server status                       |
-| GET    | /transactions           | List all (optional ?categoryId=...)  |
-| POST   | /transactions           | Create transaction                  |
-| GET    | /transactions/:id       | Get one                             |
-| PUT    | /transactions/:id       | Update (partial patch)              |
-| DELETE | /transactions/:id       | Delete → 204                        |
-| GET    | /categories             | List all categories                 |
-| POST   | /categories             | Create category                     |
-| GET    | /categories/:id         | Get one                             |
-| PUT    | /categories/:id         | Update                              |
-| DELETE | /categories/:id         | Delete (user-created only) → 204    |
-| GET    | /settings               | Get settings                        |
-| PUT    | /settings               | Update settings                     |
+| Method | Path                    | Description                                                       |
+|--------|-------------------------|-------------------------------------------------------------------|
+| GET    | /health                 | Status, version, uptime (s), request count, active connections   |
+| GET    | /summary                | Totals: income, expense, balance, count (?from, ?to, ?categoryId)|
+| GET    | /transactions           | Paginated list (?page, ?limit, ?search, ?type, ?from, ?to, ?categoryId) |
+| POST   | /transactions           | Create transaction                                                |
+| GET    | /transactions/:id       | Get one                                                           |
+| PUT    | /transactions/:id       | Update (partial patch)                                            |
+| DELETE | /transactions/:id       | Delete → 204                                                      |
+| GET    | /categories             | List all categories                                               |
+| POST   | /categories             | Create (name uniqueness enforced)                                 |
+| GET    | /categories/:id         | Get one                                                           |
+| PUT    | /categories/:id         | Update (name uniqueness enforced)                                 |
+| DELETE | /categories/:id         | Delete (user-created only) → 204, orphans → cat_other            |
+| GET    | /settings               | Get settings                                                      |
+| PUT    | /settings               | Update settings (PATCH also supported)                            |
 
 ## Features
 

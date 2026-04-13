@@ -53,11 +53,13 @@ export function useStore() {
 
   const loadAll = useCallback(async () => {
     try {
-      const [rawCats, rawTxs, settings] = await Promise.all([
+      const [rawCats, txResponse, settings] = await Promise.all([
         apiFetch('/categories'),
-        apiFetch('/transactions'),
+        apiFetch('/transactions?limit=1000'),
         apiFetch('/settings'),
       ]);
+      // /transactions now returns { data: [...], meta: {...} }
+      const rawTxs = Array.isArray(txResponse) ? txResponse : (txResponse?.data ?? []);
       backendCats.current = rawCats;
       const categoryNames = rawCats.map(c => c.name);
       setCategories(categoryNames);
@@ -131,7 +133,8 @@ export function useStore() {
   };
 
   const resetAll = async () => {
-    const allTxs = await apiFetch('/transactions');
+    const txResponse = await apiFetch('/transactions?limit=1000');
+    const allTxs = Array.isArray(txResponse) ? txResponse : (txResponse?.data ?? []);
     await Promise.all(allTxs.map(tx => apiFetch(`/transactions/${tx.id}`, { method: 'DELETE' })));
     await apiFetch('/settings', {
       method: 'PUT',
@@ -140,7 +143,7 @@ export function useStore() {
     await loadAll();
   };
 
-  const userCategories = backendCats.current
+  const userCategories = (backendCats.current ?? [])
     .filter(c => !c.isDefault)
     .map(c => c.name);
 
